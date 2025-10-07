@@ -29,6 +29,7 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
         request.state.request_id = request_id
+        request.state.trace_id = request_id
         response = await call_next(request)
         response.headers["X-Request-ID"] = request_id
         return response
@@ -51,9 +52,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 
 class AccessLogMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app: FastAPI, logger: logging.Logger):
+    def __init__(self, app: FastAPI, logger: logging.Logger, *, service_name: str):
         super().__init__(app)
         self._logger = logger
+        self._service_name = service_name
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         start = time.perf_counter()
@@ -83,6 +85,13 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
             "duration_ms": round(duration * 1000, 3),
             "request_id": request_id,
             "client": request.client.host if request.client else None,
+            "trace_id": request_id,
+            "service": self._service_name,
+            "compliance": {
+                "regimes": ["gdpr", "pci_dss", "aml"],
+                "data_classification": request.headers.get("x-data-classification", "confidential"),
+            },
+            "mtls_subject": request.headers.get("x-mtls-client-cn"),
         }
         if exc:
             payload["error"] = str(exc)
@@ -153,6 +162,6 @@ def register_exception_handlers(app: FastAPI) -> None:
 def setup_middleware(app: FastAPI) -> None:
     logger = _configure_json_logger()
     app.add_middleware(RequestIDMiddleware)
-    app.add_middleware(AccessLogMiddleware, logger=logger)
+    app.add_middleware(AccessLogMiddleware, logger=logger, service_name=app.title)
     app.add_middleware(SecurityHeadersMiddleware)
     register_exception_handlers(app)

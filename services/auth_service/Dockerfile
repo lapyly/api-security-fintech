@@ -14,7 +14,8 @@ RUN pip install --no-cache-dir \
     cryptography \
     fastapi-limiter \
     redis \
-    python-json-logger
+    python-json-logger \
+    prometheus-fastapi-instrumentator
 
 CMD [
     "uvicorn",

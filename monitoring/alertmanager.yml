@@ -1,0 +1,8 @@
+route:
+  receiver: default
+
+receivers:
+  - name: default
+    webhook_configs:
+      - url: http://monitoring-service:8004/alerts
+        send_resolved: true

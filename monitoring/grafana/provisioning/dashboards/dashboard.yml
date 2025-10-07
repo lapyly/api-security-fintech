@@ -1,0 +1,12 @@
+apiVersion: 1
+
+disableDeletion: false
+
+providers:
+  - name: fintech-dashboards
+    orgId: 1
+    folder: Fintech Operations
+    type: file
+    disableDeletion: false
+    options:
+      path: /var/lib/grafana/dashboards

@@ -41,6 +41,8 @@ services:
       - fintech-net
     volumes:
       - ./certs:/certs:ro
+    labels:
+      - "com.fintech.service=auth"
 
   account-service:
     build:
@@ -60,6 +62,8 @@ services:
       - fintech-net
     volumes:
       - ./certs:/certs:ro
+    labels:
+      - "com.fintech.service=account"
 
   transaction-service:
     build:
@@ -79,6 +83,8 @@ services:
       - fintech-net
     volumes:
       - ./certs:/certs:ro
+    labels:
+      - "com.fintech.service=transaction"
 
   audit-service:
     build:
@@ -96,6 +102,8 @@ services:
       - redis
     volumes:
       - ./certs:/certs:ro
+    labels:
+      - "com.fintech.service=audit"
 
   monitoring-service:
     build:
@@ -113,6 +121,80 @@ services:
       - redis
     volumes:
       - ./certs:/certs:ro
+    labels:
+      - "com.fintech.service=monitoring"
+
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: prometheus
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--web.enable-lifecycle"
+    ports:
+      - "9090:9090"
+    networks:
+      - fintech-net
+
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    container_name: alertmanager
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+    ports:
+      - "9093:9093"
+    networks:
+      - fintech-net
+
+  loki:
+    image: grafana/loki:2.9.3
+    container_name: loki
+    restart: unless-stopped
+    command: ["-config.file=/etc/loki/local-config.yml"]
+    volumes:
+      - ./logging/loki-config.yml:/etc/loki/local-config.yml:ro
+    ports:
+      - "3100:3100"
+    networks:
+      - fintech-net
+
+  promtail:
+    image: grafana/promtail:2.9.3
+    container_name: promtail
+    restart: unless-stopped
+    command: ["-config.file=/etc/promtail/config.yml"]
+    volumes:
+      - ./logging/promtail-config.yml:/etc/promtail/config.yml:ro
+      - promtail_positions:/tmp/promtail
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - fintech-net
+
+  grafana:
+    image: grafana/grafana:10.2.3
+    container_name: grafana
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+      - loki
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ALLOW_EMBEDDING: "true"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks:
+      - fintech-net
 
 networks:
   fintech-net:
@@ -120,4 +202,6 @@ networks:
 
 volumes:
   postgres_data:
+    driver: local
+  promtail_positions:
     driver: local

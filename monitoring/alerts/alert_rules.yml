@@ -1,0 +1,36 @@
+groups:
+  - name: fintech-operational-alerts
+    rules:
+      - alert: RateLimitBreached
+        expr: sum(increase(http_requests_total{status=~"429"}[5m])) by (service) > 20
+        for: 5m
+        labels:
+          severity: warning
+          compliance: pci-dss
+        annotations:
+          summary: "Rate limit breaches detected"
+          description: |
+            More than 20 HTTP 429 responses were returned by {{ $labels.service }} over 5 minutes.
+            Investigate potential abuse or misconfiguration.
+      - alert: FailedLoginSpike
+        expr: sum(increase(http_requests_total{service="auth-service",status=~"401|403"}[5m])) > 25
+        for: 5m
+        labels:
+          severity: critical
+          compliance: soc2
+        annotations:
+          summary: "Authentication failures trending upward"
+          description: |
+            Authentication failures against the auth-service exceeded the expected threshold
+            over the last 5 minutes. Review authentication logs for possible credential stuffing.
+      - alert: AnomalousTransactionVolume
+        expr: sum(rate(http_requests_total{service="transaction-service",method="POST",status=~"2.."}[10m])) > 50
+        for: 10m
+        labels:
+          severity: warning
+          compliance: aml
+        annotations:
+          summary: "Anomalous transaction volume detected"
+          description: |
+            The transaction-service processed more than 50 successful transaction submissions per minute
+            over the last 10 minutes. Verify whether this aligns with expected trading windows.
