@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel
@@ -17,6 +17,7 @@ class ClientRegistration(BaseModel):
     client_id: str
     client_name: str
     scopes: list[str]
+    roles: list[str]
     created_at: datetime
 
 
@@ -36,6 +37,7 @@ class TokenRequestMeta(BaseModel):
     grant_type: str
     requested_scope: Optional[str] = None
     audience: Optional[str] = None
+    subject: Optional[str] = None
 
 
 class OAuthClient(BaseModel):
@@ -44,4 +46,4 @@ class OAuthClient(BaseModel):
     description: Optional[str] = None
     scopes: list[str]
     allowed_grant_types: list[str]
-
+    roles: list[str] = []

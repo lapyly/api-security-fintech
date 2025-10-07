@@ -15,6 +15,13 @@ services:
     networks:
       - fintech-net
 
+  redis:
+    image: redis:7-alpine
+    container_name: fintech-redis
+    restart: unless-stopped
+    networks:
+      - fintech-net
+
   auth-service:
     build:
       context: .
@@ -22,12 +29,18 @@ services:
     container_name: auth-service
     environment:
       AUTH_DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/postgres
+      REDIS_URL: redis://redis:6379/0
+      AUTH_PRIVATE_KEY_PATH: /certs/auth_service.key
+      AUTH_PUBLIC_KEY_PATH: /certs/auth_service.crt
     ports:
       - "8000:8000"
     depends_on:
       - postgres
+      - redis
     networks:
       - fintech-net
+    volumes:
+      - ./certs:/certs:ro
 
   account-service:
     build:
@@ -36,12 +49,17 @@ services:
     container_name: account-service
     environment:
       ACCOUNT_DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/accounts
+      REDIS_URL: redis://redis:6379/0
+      AUTH_PUBLIC_KEY_PATH: /certs/auth_service.crt
     ports:
       - "8001:8001"
     depends_on:
       - postgres
+      - redis
     networks:
       - fintech-net
+    volumes:
+      - ./certs:/certs:ro
 
   transaction-service:
     build:
@@ -50,12 +68,17 @@ services:
     container_name: transaction-service
     environment:
       TRANSACTION_DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/transactions
+      REDIS_URL: redis://redis:6379/0
+      AUTH_PUBLIC_KEY_PATH: /certs/auth_service.crt
     ports:
       - "8002:8002"
     depends_on:
       - postgres
+      - redis
     networks:
       - fintech-net
+    volumes:
+      - ./certs:/certs:ro
 
   audit-service:
     build:
@@ -64,8 +87,15 @@ services:
     container_name: audit-service
     ports:
       - "8003:8003"
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      AUTH_PUBLIC_KEY_PATH: /certs/auth_service.crt
     networks:
       - fintech-net
+    depends_on:
+      - redis
+    volumes:
+      - ./certs:/certs:ro
 
   monitoring-service:
     build:
@@ -74,8 +104,15 @@ services:
     container_name: monitoring-service
     ports:
       - "8004:8004"
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      AUTH_PUBLIC_KEY_PATH: /certs/auth_service.crt
     networks:
       - fintech-net
+    depends_on:
+      - redis
+    volumes:
+      - ./certs:/certs:ro
 
 networks:
   fintech-net:

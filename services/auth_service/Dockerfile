@@ -4,6 +4,31 @@ WORKDIR /app
 
 COPY services/auth_service /app
 
-RUN pip install --no-cache-dir fastapi "uvicorn[standard]" sqlmodel asyncpg python-multipart
+RUN pip install --no-cache-dir \
+    fastapi \
+    "uvicorn[standard]" \
+    sqlmodel \
+    asyncpg \
+    python-multipart \
+    pyjwt \
+    cryptography \
+    fastapi-limiter \
+    redis \
+    python-json-logger
 
-CMD ["uvicorn", "presentation.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD [
+    "uvicorn",
+    "presentation.main:app",
+    "--host",
+    "0.0.0.0",
+    "--port",
+    "8000",
+    "--ssl-keyfile",
+    "/certs/auth_service.key",
+    "--ssl-certfile",
+    "/certs/auth_service.crt",
+    "--ssl-ca-certs",
+    "/certs/ca.crt",
+    "--ssl-cert-reqs",
+    "2"
+]
