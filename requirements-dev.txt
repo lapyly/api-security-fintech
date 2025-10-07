@@ -4,7 +4,7 @@ sqlmodel==0.0.18
 sqlalchemy[asyncio]==2.0.29
 asyncpg==0.29.0
 redis==5.0.3
-fastapi-limiter==0.1.5
+fastapi-limiter==0.1.6
 PyJWT[crypto]==2.8.0
 testcontainers[postgresql]==3.7.1
 pytest==8.2.0

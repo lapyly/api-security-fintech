@@ -11,8 +11,8 @@ RUN pip install --no-cache-dir \
     asyncpg \
     pyjwt \
     cryptography \
-    fastapi-limiter \
-    redis \
+    fastapi-limiter==0.1.6 \
+    redis==5.0.3 \
     python-json-logger \
     prometheus-fastapi-instrumentator
 
