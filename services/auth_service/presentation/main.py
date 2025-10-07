@@ -6,6 +6,7 @@ from ..infrastructure.rate_limiting import register_rate_limiter
 from .api import router
 from .dependencies import decode_bearer_token, get_jwt_service
 from .middleware import setup_middleware
+from .metrics import setup_metrics
 
 
 oauth_flows = oauth2_base.OAuthFlowsModel(
@@ -25,6 +26,7 @@ app = FastAPI(
 )
 
 setup_middleware(app)
+setup_metrics(app)
 register_rate_limiter(app)
 app.include_router(router)
 

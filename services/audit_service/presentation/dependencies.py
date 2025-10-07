@@ -7,9 +7,10 @@ from pathlib import Path
 from typing import Callable
 
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from ..infrastructure.repository import AuditEventRepository
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -88,3 +89,22 @@ def require_roles(*required_roles: str) -> Callable[[Principal], Principal]:
         return principal
 
     return dependency
+
+
+@lru_cache
+def _repository() -> AuditEventRepository:
+    return AuditEventRepository()
+
+
+async def get_audit_repository() -> AuditEventRepository:
+    return _repository()
+
+
+async def require_mutual_tls_identity(request: Request) -> str:
+    client_cn = request.headers.get("x-mtls-client-cn")
+    if not client_cn:
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            detail="mTLS client identity missing",
+        )
+    return client_cn
