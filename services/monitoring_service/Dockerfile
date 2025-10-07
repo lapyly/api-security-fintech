@@ -4,6 +4,9 @@ WORKDIR /app
 
 COPY services/monitoring_service /app
 
+# Include shared utilities used by services (e.g., services.common)
+COPY services/common /app/services/common
+
 RUN pip install --no-cache-dir \
     fastapi \
     "uvicorn[standard]" \
@@ -14,19 +17,4 @@ RUN pip install --no-cache-dir \
     python-json-logger \
     prometheus-fastapi-instrumentator
 
-CMD [
-    "uvicorn",
-    "presentation.main:app",
-    "--host",
-    "0.0.0.0",
-    "--port",
-    "8004",
-    "--ssl-keyfile",
-    "/certs/monitoring_service.key",
-    "--ssl-certfile",
-    "/certs/monitoring_service.crt",
-    "--ssl-ca-certs",
-    "/certs/ca.crt",
-    "--ssl-cert-reqs",
-    "2"
-]
+CMD ["uvicorn","presentation.main:app","--host","0.0.0.0","--port","8004","--ssl-keyfile","/certs/monitoring_service.key","--ssl-certfile","/certs/monitoring_service.crt","--ssl-ca-certs","/certs/ca.crt","--ssl-cert-reqs","2"]
