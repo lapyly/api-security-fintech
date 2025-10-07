@@ -1,0 +1,86 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: fintech-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+    networks:
+      - fintech-net
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: services/auth_service/Dockerfile
+    container_name: auth-service
+    environment:
+      AUTH_DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/postgres
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+    networks:
+      - fintech-net
+
+  account-service:
+    build:
+      context: .
+      dockerfile: services/account_service/Dockerfile
+    container_name: account-service
+    environment:
+      ACCOUNT_DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/accounts
+    ports:
+      - "8001:8001"
+    depends_on:
+      - postgres
+    networks:
+      - fintech-net
+
+  transaction-service:
+    build:
+      context: .
+      dockerfile: services/transaction_service/Dockerfile
+    container_name: transaction-service
+    environment:
+      TRANSACTION_DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/transactions
+    ports:
+      - "8002:8002"
+    depends_on:
+      - postgres
+    networks:
+      - fintech-net
+
+  audit-service:
+    build:
+      context: .
+      dockerfile: services/audit_service/Dockerfile
+    container_name: audit-service
+    ports:
+      - "8003:8003"
+    networks:
+      - fintech-net
+
+  monitoring-service:
+    build:
+      context: .
+      dockerfile: services/monitoring_service/Dockerfile
+    container_name: monitoring-service
+    ports:
+      - "8004:8004"
+    networks:
+      - fintech-net
+
+networks:
+  fintech-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
