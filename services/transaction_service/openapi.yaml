@@ -1,0 +1,222 @@
+openapi: 3.1.0
+info:
+  title: Transaction Service
+  version: 0.2.0
+  description: API surface for managing financial transactions.
+servers:
+  - url: https://transaction.local
+paths:
+  /health:
+    get:
+      tags:
+        - health
+      summary: Health check
+      responses:
+        '200':
+          description: Successful health response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+      security:
+        - OAuth2: []
+  /transactions:
+    get:
+      tags:
+        - transactions
+      summary: List all transactions
+      responses:
+        '200':
+          description: A list of transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TransactionRead'
+      security:
+        - OAuth2:
+            - transactions:read
+    post:
+      tags:
+        - transactions
+      summary: Create a transaction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionCreate'
+      responses:
+        '201':
+          description: Transaction created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionRead'
+      security:
+        - OAuth2:
+            - transactions:write
+            - accounts:read
+  /transactions/{transaction_id}:
+    get:
+      tags:
+        - transactions
+      summary: Get a transaction
+      parameters:
+        - name: transaction_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Transaction detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionRead'
+        '404':
+          description: Transaction not found
+      security:
+        - OAuth2:
+            - transactions:read
+    put:
+      tags:
+        - transactions
+      summary: Update a transaction
+      parameters:
+        - name: transaction_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionUpdate'
+      responses:
+        '200':
+          description: Updated transaction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionRead'
+        '404':
+          description: Transaction not found
+      security:
+        - OAuth2:
+            - transactions:write
+  /transactions/accounts/{account_id}:
+    get:
+      tags:
+        - transactions
+      summary: List transactions for an account
+      parameters:
+        - name: account_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Transactions for the specified account
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TransactionRead'
+      security:
+        - OAuth2:
+            - transactions:read
+components:
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://auth.local/oauth/authorize
+          tokenUrl: https://auth.local/auth/token
+          scopes:
+            accounts:read: Read account metadata for transaction context
+            transactions:read: Read transaction records
+            transactions:write: Create or update transactions
+        clientCredentials:
+          tokenUrl: https://auth.local/auth/token
+          scopes:
+            accounts:read: Read account metadata for transaction context
+            transactions:read: Read transaction records
+            transactions:write: Create or update transactions
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+    TransactionBase:
+      type: object
+      required:
+        - account_id
+        - amount
+        - currency
+        - direction
+      properties:
+        account_id:
+          type: integer
+        amount:
+          type: number
+          format: float
+        currency:
+          type: string
+        direction:
+          type: string
+          enum:
+            - debit
+            - credit
+        description:
+          type: string
+          nullable: true
+    TransactionCreate:
+      allOf:
+        - $ref: '#/components/schemas/TransactionBase'
+        - type: object
+          properties:
+            user_id:
+              type: integer
+              nullable: true
+    TransactionUpdate:
+      type: object
+      properties:
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+          nullable: true
+    TransactionRead:
+      allOf:
+        - $ref: '#/components/schemas/TransactionBase'
+        - type: object
+          required:
+            - id
+            - status
+            - created_at
+            - updated_at
+          properties:
+            id:
+              type: integer
+            user_id:
+              type: integer
+              nullable: true
+            status:
+              type: string
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time

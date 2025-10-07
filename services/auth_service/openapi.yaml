@@ -1,0 +1,265 @@
+openapi: 3.1.0
+info:
+  title: Auth Service
+  version: 0.2.0
+  description: OAuth2 token issuance, validation, and introspection endpoints.
+servers:
+  - url: https://auth.local
+paths:
+  /health:
+    get:
+      tags:
+        - health
+      summary: Health check
+      responses:
+        '200':
+          description: Service availability status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+      security:
+        - OAuth2: []
+  /auth/token:
+    post:
+      tags:
+        - auth
+      summary: Issue OAuth2 access token
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - grant_type
+              properties:
+                grant_type:
+                  type: string
+                  enum:
+                    - password
+                    - client_credentials
+                username:
+                  type: string
+                password:
+                  type: string
+                client_id:
+                  type: string
+                client_secret:
+                  type: string
+                scope:
+                  type: string
+      responses:
+        '200':
+          description: OAuth2 token response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          description: Invalid grant request
+      security: []
+  /auth/refresh:
+    post:
+      tags:
+        - auth
+      summary: Refresh OAuth2 access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Refreshed token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          description: Invalid refresh token
+      security: []
+  /auth/revoke:
+    post:
+      tags:
+        - auth
+      summary: Revoke an OAuth2 token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRevocationRequest'
+      responses:
+        '200':
+          description: Token revoked confirmation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  token:
+                    type: string
+      security: []
+  /auth/clients:
+    get:
+      tags:
+        - auth
+      summary: List registered OAuth2 clients
+      responses:
+        '200':
+          description: OAuth2 clients
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ClientRegistration'
+      security:
+        - OAuth2:
+            - audit:read
+  /whoami:
+    get:
+      tags:
+        - auth
+      summary: Inspect the calling principal
+      responses:
+        '200':
+          description: Principal attributes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WhoAmI'
+      security:
+        - OAuth2: []
+  /.well-known/jwks.json:
+    get:
+      tags:
+        - auth
+      summary: Retrieve the JSON Web Key Set
+      responses:
+        '200':
+          description: JWKS document
+          content:
+            application/json:
+              schema:
+                type: object
+      security: []
+components:
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://auth.local/oauth/authorize
+          tokenUrl: https://auth.local/auth/token
+          scopes:
+            accounts:read: Read account resources
+            accounts:write: Modify account resources
+            transactions:read: Read transaction resources
+            transactions:write: Modify transaction resources
+            audit:read: Inspect audit events
+        clientCredentials:
+          tokenUrl: https://auth.local/auth/token
+          scopes:
+            accounts:read: Read account resources
+            accounts:write: Modify account resources
+            transactions:read: Read transaction resources
+            transactions:write: Modify transaction resources
+            audit:read: Inspect audit events
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+    TokenResponse:
+      type: object
+      required:
+        - access_token
+        - token_type
+        - expires_in
+        - issued_at
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          example: bearer
+        expires_in:
+          type: integer
+        refresh_token:
+          type: string
+          nullable: true
+        scope:
+          type: string
+          nullable: true
+        issued_at:
+          type: string
+          format: date-time
+    RefreshTokenRequest:
+      type: object
+      required:
+        - refresh_token
+      properties:
+        refresh_token:
+          type: string
+        scope:
+          type: string
+          nullable: true
+        expires_in:
+          type: integer
+          nullable: true
+    TokenRevocationRequest:
+      type: object
+      required:
+        - token
+      properties:
+        token:
+          type: string
+        token_type_hint:
+          type: string
+          nullable: true
+    ClientRegistration:
+      type: object
+      required:
+        - client_id
+        - client_name
+        - scopes
+        - roles
+        - created_at
+      properties:
+        client_id:
+          type: string
+        client_name:
+          type: string
+        scopes:
+          type: array
+          items:
+            type: string
+        roles:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+    WhoAmI:
+      type: object
+      properties:
+        sub:
+          type: string
+        scope:
+          type: string
+          nullable: true
+        roles:
+          type: array
+          items:
+            type: string
+        client_id:
+          type: string
+          nullable: true

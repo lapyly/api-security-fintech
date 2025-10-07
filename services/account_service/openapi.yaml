@@ -1,0 +1,221 @@
+openapi: 3.1.0
+info:
+  title: Account Service
+  version: 0.2.0
+  description: Manage customer financial accounts and users.
+servers:
+  - url: https://accounts.local
+paths:
+  /health:
+    get:
+      tags:
+        - health
+      summary: Health check
+      responses:
+        '200':
+          description: Service health status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+      security:
+        - OAuth2: []
+  /accounts:
+    get:
+      tags:
+        - accounts
+      summary: List accounts
+      responses:
+        '200':
+          description: Collection of accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AccountRead'
+      security:
+        - OAuth2:
+            - accounts:read
+    post:
+      tags:
+        - accounts
+      summary: Create an account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountCreate'
+      responses:
+        '201':
+          description: Account created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountRead'
+        '404':
+          description: Related user not found
+      security:
+        - OAuth2:
+            - accounts:write
+  /accounts/{account_id}:
+    get:
+      tags:
+        - accounts
+      summary: Get account detail
+      parameters:
+        - name: account_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Account detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountRead'
+        '404':
+          description: Account not found
+      security:
+        - OAuth2:
+            - accounts:read
+    put:
+      tags:
+        - accounts
+      summary: Update an account
+      parameters:
+        - name: account_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountUpdate'
+      responses:
+        '200':
+          description: Updated account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountRead'
+        '404':
+          description: Account not found
+      security:
+        - OAuth2:
+            - accounts:write
+    delete:
+      tags:
+        - accounts
+      summary: Delete an account
+      parameters:
+        - name: account_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Account deleted
+        '404':
+          description: Account not found
+      security:
+        - OAuth2:
+            - accounts:write
+components:
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://auth.local/oauth/authorize
+          tokenUrl: https://auth.local/auth/token
+          scopes:
+            accounts:read: Read customer and treasury account metadata
+            accounts:write: Create or update financial accounts
+            transactions:read: Link to transaction history
+        clientCredentials:
+          tokenUrl: https://auth.local/auth/token
+          scopes:
+            accounts:read: Read customer and treasury account metadata
+            accounts:write: Create or update financial accounts
+            transactions:read: Link to transaction history
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+    AccountCreate:
+      type: object
+      required:
+        - user_id
+        - account_number
+        - account_type
+      properties:
+        user_id:
+          type: integer
+        account_number:
+          type: string
+        account_type:
+          type: string
+        currency:
+          type: string
+          default: USD
+        status:
+          type: string
+          default: active
+        initial_deposit:
+          type: number
+          format: float
+          default: 0
+    AccountUpdate:
+      type: object
+      properties:
+        account_type:
+          type: string
+          nullable: true
+        status:
+          type: string
+          nullable: true
+    AccountRead:
+      type: object
+      required:
+        - id
+        - user_id
+        - account_number
+        - account_type
+        - currency
+        - status
+        - balance
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        account_number:
+          type: string
+        account_type:
+          type: string
+        currency:
+          type: string
+        status:
+          type: string
+        balance:
+          type: number
+          format: float
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time

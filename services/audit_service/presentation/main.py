@@ -1,5 +1,7 @@
 from fastapi import Depends, FastAPI
 
+from services.common.docs import configure_openapi_security
+
 from ..infrastructure.rate_limiting import register_rate_limiter
 from .api import router
 from .dependencies import get_current_principal
@@ -7,6 +9,13 @@ from .middleware import setup_middleware
 from .metrics import setup_metrics
 
 app = FastAPI(title="Audit Service", version="0.2.0")
+configure_openapi_security(
+    app,
+    scopes={
+        "audit:read": "Read compliance and security audit events",
+        "audit:write": "Submit a new audit event",
+    },
+)
 setup_middleware(app)
 setup_metrics(app)
 register_rate_limiter(app)

@@ -1,0 +1,84 @@
+openapi: 3.1.0
+info:
+  title: Monitoring Service
+  version: 0.2.0
+  description: Receive alert webhooks and expose operational health endpoints.
+servers:
+  - url: https://monitoring.local
+paths:
+  /health:
+    get:
+      tags:
+        - health
+      summary: Health check
+      responses:
+        '200':
+          description: Health status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+      security:
+        - OAuth2: []
+  /alerts:
+    post:
+      tags:
+        - alerts
+      summary: Receive alert notifications
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlertPayload'
+      responses:
+        '202':
+          description: Alert accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertResponse'
+      security:
+        - OAuth2:
+            - monitoring:write
+components:
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://auth.local/oauth/authorize
+          tokenUrl: https://auth.local/auth/token
+          scopes:
+            monitoring:write: Submit alert payloads
+            monitoring:read: Review monitoring health checks
+        clientCredentials:
+          tokenUrl: https://auth.local/auth/token
+          scopes:
+            monitoring:write: Submit alert payloads
+            monitoring:read: Review monitoring health checks
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+    AlertPayload:
+      type: object
+      properties:
+        receiver:
+          type: string
+        status:
+          type: string
+        alerts:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+    AlertResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: received
