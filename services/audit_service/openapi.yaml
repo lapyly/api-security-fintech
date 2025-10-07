@@ -1,0 +1,183 @@
+openapi: 3.1.0
+info:
+  title: Audit Service
+  version: 0.2.0
+  description: Centralized compliance and security audit logging API.
+servers:
+  - url: https://audit.local
+paths:
+  /health:
+    get:
+      tags:
+        - health
+      summary: Health check
+      responses:
+        '200':
+          description: Service health
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+      security:
+        - OAuth2: []
+  /audit/events:
+    post:
+      tags:
+        - audit
+      summary: Record an audit event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuditEventPayload'
+      responses:
+        '201':
+          description: Audit event created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditEventResponse'
+      security:
+        - OAuth2:
+            - audit:write
+    get:
+      tags:
+        - audit
+      summary: List audit events
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 100
+      responses:
+        '200':
+          description: Audit event feed
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AuditEventRead'
+        '400':
+          description: Invalid limit parameter
+      security:
+        - OAuth2:
+            - audit:read
+components:
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://auth.local/oauth/authorize
+          tokenUrl: https://auth.local/auth/token
+          scopes:
+            audit:read: Read compliance and security audit events
+            audit:write: Submit a new audit event
+        clientCredentials:
+          tokenUrl: https://auth.local/auth/token
+          scopes:
+            audit:read: Read compliance and security audit events
+            audit:write: Submit a new audit event
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+    AuditEventPayload:
+      type: object
+      required:
+        - category
+        - action
+        - actor
+      properties:
+        category:
+          $ref: '#/components/schemas/AuditEventCategory'
+        action:
+          type: string
+        actor:
+          type: string
+        principal:
+          type: string
+          nullable: true
+        resource:
+          type: string
+          nullable: true
+        severity:
+          type: string
+          default: info
+        metadata:
+          type: object
+          additionalProperties: {}
+        compliance_tags:
+          type: array
+          items:
+            type: string
+    AuditEventResponse:
+      type: object
+      required:
+        - id
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+    AuditEventRead:
+      type: object
+      required:
+        - id
+        - category
+        - action
+        - actor
+        - severity
+        - source_service
+        - metadata
+        - compliance_tags
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        category:
+          $ref: '#/components/schemas/AuditEventCategory'
+        action:
+          type: string
+        actor:
+          type: string
+        principal:
+          type: string
+          nullable: true
+        resource:
+          type: string
+          nullable: true
+        severity:
+          type: string
+        source_service:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: {}
+        compliance_tags:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+    AuditEventCategory:
+      type: string
+      enum:
+        - security
+        - transaction
+        - compliance
+        - platform
