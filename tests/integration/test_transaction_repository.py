@@ -15,11 +15,24 @@ from services.transaction_service.infrastructure import repositories
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_transaction_repository_crud_flow() -> None:
-    with PostgresContainer("postgres:15-alpine") as postgres:
+    # Use the same credentials as docker-compose to avoid password mismatches when the
+    # repository reads TRANSACTION_DATABASE_URL.  Testcontainers defaults to the
+    # ``test`` user/password, so we explicitly align them with postgres/postgres.
+    with PostgresContainer(
+        "postgres:15-alpine",
+        user="postgres",
+        password="postgres",
+        dbname="postgres",
+    ) as postgres:
         sync_url = make_url(postgres.get_connection_url())
         async_url = sync_url.set(drivername="postgresql+asyncpg")
         os.environ["TRANSACTION_DATABASE_URL"] = str(async_url)
         os.environ["TRANSACTION_DATABASE_SSLMODE"] = "disable"
+
+        # Surface the normalized credentials for any code path that reads the
+        # standard Postgres environment variables during the test run.
+        os.environ["POSTGRES_USER"] = postgres.username
+        os.environ["POSTGRES_PASSWORD"] = postgres.password
 
         repo_module = importlib.reload(repositories)
 
