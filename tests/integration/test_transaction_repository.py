@@ -24,15 +24,12 @@ async def test_transaction_repository_crud_flow() -> None:
         "POSTGRES_PASSWORD": "postgres",
         "POSTGRES_DB": "postgres",
     }
-    # ``PostgresContainer`` drops support for the ``env=`` kwarg across 2.x/3.x, so
-    # we propagate credentials via ``with_env`` to stay compatible with both
-    # versions.
-    with (
-        PostgresContainer("postgres:15-alpine")
-        .with_env("POSTGRES_USER", credentials["POSTGRES_USER"])
-        .with_env("POSTGRES_PASSWORD", credentials["POSTGRES_PASSWORD"])
-        .with_env("POSTGRES_DB", credentials["POSTGRES_DB"])
-    ) as postgres:
+    # ``PostgresContainer`` in testcontainers-postgres v3+ ignores ``with_env``
+    # overrides for the default credentials, so we set them via os.environ
+    # before instantiating the container to ensure asyncpg can authenticate.
+    os.environ.update(credentials)
+
+    with PostgresContainer("postgres:15-alpine") as postgres:
         sync_url = make_url(postgres.get_connection_url())
         async_url = sync_url.set(drivername="postgresql+asyncpg")
         os.environ["TRANSACTION_DATABASE_URL"] = str(async_url)
