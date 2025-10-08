@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class TransactionBase(BaseModel):
@@ -22,6 +22,9 @@ class TransactionUpdate(BaseModel):
 
 
 class TransactionRead(TransactionBase):
+    # Allow constructing the response model directly from SQLModel ORM instances
+    # when calling ``model_validate`` in tests and services (required for Pydantic v2).
+    model_config = ConfigDict(from_attributes=True)
     id: int
     user_id: Optional[int] = None
     status: str
