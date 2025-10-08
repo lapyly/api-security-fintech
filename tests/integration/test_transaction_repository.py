@@ -17,14 +17,22 @@ from services.transaction_service.infrastructure import repositories
 async def test_transaction_repository_crud_flow() -> None:
     # Use the same credentials as docker-compose to avoid password mismatches when the
     # repository reads TRANSACTION_DATABASE_URL.  Testcontainers defaults to the
-    # ``test`` user/password in v3+, so we explicitly override them via ``env`` to keep
-    # compatibility with asyncpg + SQLAlchemy 2.x on Python 3.11.
+    # ``test`` user/password in v3+, so we explicitly override them via environment
+    # variables to keep compatibility with asyncpg + SQLAlchemy 2.x on Python 3.11.
     credentials = {
         "POSTGRES_USER": "postgres",
         "POSTGRES_PASSWORD": "postgres",
         "POSTGRES_DB": "postgres",
     }
-    with PostgresContainer("postgres:15-alpine", env=credentials) as postgres:
+    # ``PostgresContainer`` drops support for the ``env=`` kwarg across 2.x/3.x, so
+    # we propagate credentials via ``with_env`` to stay compatible with both
+    # versions.
+    with (
+        PostgresContainer("postgres:15-alpine")
+        .with_env("POSTGRES_USER", credentials["POSTGRES_USER"])
+        .with_env("POSTGRES_PASSWORD", credentials["POSTGRES_PASSWORD"])
+        .with_env("POSTGRES_DB", credentials["POSTGRES_DB"])
+    ) as postgres:
         sync_url = make_url(postgres.get_connection_url())
         async_url = sync_url.set(drivername="postgresql+asyncpg")
         os.environ["TRANSACTION_DATABASE_URL"] = str(async_url)
