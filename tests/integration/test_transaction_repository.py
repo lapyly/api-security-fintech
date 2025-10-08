@@ -31,7 +31,9 @@ async def test_transaction_repository_crud_flow() -> None:
 
         # Surface the normalized credentials for any code path that reads the
         # standard Postgres environment variables during the test run.
-        os.environ["POSTGRES_USER"] = postgres.username
+        # ``testcontainers`` 3.x renamed ``username`` to ``user``; use the new
+        # attribute so the test works with modern releases.
+        os.environ["POSTGRES_USER"] = postgres.user
         os.environ["POSTGRES_PASSWORD"] = postgres.password
 
         repo_module = importlib.reload(repositories)
