@@ -1,18 +1,13 @@
 from __future__ import annotations
 
-import asyncio
-from collections.abc import AsyncIterator, Generator
+from collections.abc import AsyncIterator
 from typing import Any
 
 import pytest
 
 
-@pytest.fixture(scope="session")
-def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
-    """Create an event loop for the entire pytest session."""
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
+# pytest-asyncio>=0.23 provides a session-scoped loop by default, so we can
+# rely on its built-in fixture instead of redefining ``event_loop``.
 
 
 @pytest.fixture

@@ -6,6 +6,7 @@ import pytest
 from fastapi import HTTPException
 
 from services.transaction_service.application.schemas import TransactionRead
+from services.transaction_service.domain.models import Transaction
 from services.transaction_service.presentation.dependencies import (
     Principal,
     require_roles,
@@ -53,7 +54,7 @@ async def test_require_roles_blocks_unauthorized_role(principal_factory) -> None
 
 @pytest.mark.security
 def test_sanitize_transaction_masks_pan_values() -> None:
-    transaction = TransactionRead(
+    transaction = Transaction(
         id=1,
         account_id=123,
         user_id=555,
@@ -66,7 +67,10 @@ def test_sanitize_transaction_masks_pan_values() -> None:
         updated_at=datetime.utcnow(),
     )
 
-    sanitized = sanitize_transaction(transaction)
+    # Pydantic v2 requires validating from either a dict or the originating model.
+    transaction_read = TransactionRead.model_validate(transaction)
+
+    sanitized = sanitize_transaction(transaction_read)
 
     assert sanitized.description.endswith("1111 used")
     assert "411111" not in sanitized.description
