@@ -5,6 +5,7 @@ import os
 
 import pytest
 from sqlalchemy import text
+from sqlalchemy.engine import make_url
 from testcontainers.postgres import PostgresContainer
 
 from services.transaction_service.domain.models import Transaction
@@ -15,9 +16,9 @@ from services.transaction_service.infrastructure import repositories
 @pytest.mark.asyncio
 async def test_transaction_repository_crud_flow() -> None:
     with PostgresContainer("postgres:15-alpine") as postgres:
-        sync_url = postgres.get_connection_url()
-        async_url = sync_url.replace("postgresql://", "postgresql+asyncpg://")
-        os.environ["TRANSACTION_DATABASE_URL"] = async_url
+        sync_url = make_url(postgres.get_connection_url())
+        async_url = sync_url.set(drivername="postgresql+asyncpg")
+        os.environ["TRANSACTION_DATABASE_URL"] = str(async_url)
         os.environ["TRANSACTION_DATABASE_SSLMODE"] = "disable"
 
         repo_module = importlib.reload(repositories)

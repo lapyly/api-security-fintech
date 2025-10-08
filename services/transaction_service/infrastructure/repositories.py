@@ -4,6 +4,7 @@ import os
 from contextlib import asynccontextmanager
 from typing import AsyncIterator, Optional
 
+from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.future import select
 from sqlmodel import SQLModel
@@ -17,6 +18,14 @@ DATABASE_URL = os.getenv(
 )
 
 
+def _normalize_database_url(url: str) -> str:
+    """Ensure the SQLAlchemy URL uses the asyncpg driver."""
+    url_obj = make_url(url)
+    if "asyncpg" not in url_obj.drivername:
+        url_obj = url_obj.set(drivername="postgresql+asyncpg")
+    return str(url_obj)
+
+
 def _connect_args() -> dict[str, object]:
     ssl_mode = os.getenv("TRANSACTION_DATABASE_SSLMODE", "require").lower()
     if ssl_mode in {"disable", "disabled", "off", "false", "0"}:
@@ -28,7 +37,7 @@ def _connect_args() -> dict[str, object]:
 
 def _create_engine(url: str = DATABASE_URL) -> AsyncEngine:
     return create_async_engine(
-        url,
+        _normalize_database_url(url),
         echo=False,
         connect_args=_connect_args(),
     )
