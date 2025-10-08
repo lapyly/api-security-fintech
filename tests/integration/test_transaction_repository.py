@@ -30,11 +30,13 @@ async def test_transaction_repository_crud_flow() -> None:
         os.environ["TRANSACTION_DATABASE_SSLMODE"] = "disable"
 
         # Surface the normalized credentials for any code path that reads the
-        # standard Postgres environment variables during the test run.
-        # ``testcontainers`` 3.x renamed ``username`` to ``user``; use the new
-        # attribute so the test works with modern releases.
-        os.environ["POSTGRES_USER"] = postgres.user
-        os.environ["POSTGRES_PASSWORD"] = postgres.password
+        # standard Postgres environment variables during the test run.  The
+        # ``testcontainers`` 3.x+ releases removed the ``user``/``username``
+        # attributes in favor of storing credentials in ``PostgresContainer``'s
+        # ``env`` mapping, so we now look them up there for compatibility with
+        # modern versions while keeping the remainder of the async setup intact.
+        os.environ["POSTGRES_USER"] = postgres.env["POSTGRES_USER"]
+        os.environ["POSTGRES_PASSWORD"] = postgres.env["POSTGRES_PASSWORD"]
 
         repo_module = importlib.reload(repositories)
 
