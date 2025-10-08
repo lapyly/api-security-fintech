@@ -32,24 +32,104 @@ jobs:
         run: npm install --global newman@5
 
       - name: Lint with ruff
+        id: lint
+        continue-on-error: true
         run: ruff check .
 
       - name: Run pytest with coverage
+        id: tests
+        continue-on-error: true
         run: pytest
 
       - name: Start services
-        run: docker compose up --build -d
+        run: |
+          set -euo pipefail
+          docker compose up --build -d
+          echo "Waiting for services to become healthy..."
+          services=$(docker compose config --services)
+          if [ -z "${services}" ]; then
+            echo "No services defined in docker-compose.yml"
+            exit 1
+          fi
+          end=$((SECONDS + 300))
+          while [ ${SECONDS} -lt ${end} ]; do
+            unhealthy=0
+            for service in ${services}; do
+              container_id=$(docker compose ps -q "${service}")
+              if [ -z "${container_id}" ]; then
+                echo "Container for ${service} is not started yet."
+                unhealthy=1
+                break
+              fi
+              health_status=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "${container_id}")
+              if [ "${health_status}" != "healthy" ] && [ "${health_status}" != "running" ]; then
+                echo "Service ${service} status: ${health_status}"
+                unhealthy=1
+              fi
+            done
+            if [ ${unhealthy} -eq 0 ]; then
+              echo "All services are healthy."
+              break
+            fi
+            sleep 5
+          done
+          if [ ${unhealthy:-1} -ne 0 ]; then
+            echo "Services did not become healthy in time."
+            docker compose ps
+            exit 1
+          fi
 
-      - name: Run Newman collection
+      - name: Run Newman collection with retries
         env:
           AUTH_BASE_URL: http://localhost:8001
           ACCOUNT_BASE_URL: http://localhost:8002
           TRANSACTION_BASE_URL: http://localhost:8003
-        run: ./tests/postman/run_newman.sh
+        run: |
+          set -euo pipefail
+          attempts=5
+          delay=10
+          for attempt in $(seq 1 ${attempts}); do
+            echo "Running Newman attempt ${attempt}/${attempts}"
+            if ./tests/postman/run_newman.sh; then
+              exit 0
+            fi
+            if [ ${attempt} -lt ${attempts} ]; then
+              echo "Newman run failed, waiting ${delay}s before retry..."
+              sleep ${delay}
+            fi
+          done
+          echo "Newman tests failed after ${attempts} attempts"
+          exit 1
+
+      - name: Docker debug info on failure
+        if: failure()
+        run: |
+          echo "Docker ps -a:"
+          docker ps -a || true
+          echo "Docker compose ps:"
+          docker compose ps || true
+          services=$(docker compose config --services 2>/dev/null || true)
+          for service in ${services}; do
+            echo "Logs for ${service}:"
+            docker compose logs "${service}" || true
+          done
 
       - name: Stop services
         if: always()
         run: docker compose down
+
+      - name: Fail if lint or tests failed
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ "${{ steps.lint.outcome }}" = "failure" ]; then
+            echo "Ruff linting failed."
+            exit 1
+          fi
+          if [ "${{ steps.tests.outcome }}" = "failure" ]; then
+            echo "Pytest failed."
+            exit 1
+          fi
 
       - name: Upload coverage artifact
         if: always()
