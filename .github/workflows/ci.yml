@@ -42,11 +42,12 @@ jobs:
         run: pytest
 
       - name: Start services
+        id: start_services
         run: |
           set -euo pipefail
-          docker compose up --build -d
+          services="postgres redis auth-service account-service transaction-service audit-service monitoring-service"
+          docker compose up --build -d ${services}
           echo "Waiting for services to become healthy..."
-          services=$(docker compose config --services)
           if [ -z "${services}" ]; then
             echo "No services defined in docker-compose.yml"
             exit 1
@@ -78,6 +79,17 @@ jobs:
             docker compose ps
             exit 1
           fi
+
+      - name: Debug services on startup failure
+        if: failure() && steps.start_services.outcome == 'failure'
+        run: |
+          set -euo pipefail
+          echo "Docker ps -a:"
+          docker ps -a || true
+          for service in postgres redis auth-service account-service transaction-service audit-service monitoring-service; do
+            echo "Logs for ${service}:"
+            docker logs ${service} || true
+          done
 
       - name: Run Newman collection with retries
         env:
