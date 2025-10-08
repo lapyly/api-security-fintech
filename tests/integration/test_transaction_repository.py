@@ -15,15 +15,16 @@ from services.transaction_service.infrastructure import repositories
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_transaction_repository_crud_flow() -> None:
-    # Explicit credentials prevent a mismatch between the async engine and the
-    # Postgres container.  Older testcontainers releases boot with the
-    # hard-coded ``test``/``test`` combination while newer releases default to
-    # ``postgres``/``postgres``.  Pinning the desired values ahead of time keeps
-    # both sides aligned regardless of the library version under test.
+    # Reusing the docker-compose credentials keeps the async engine and the
+    # Postgres container perfectly aligned.  Older testcontainers releases boot
+    # with the hard-coded ``test``/``test`` combination while newer releases
+    # default to ``postgres``/``postgres``.  Pinning the compose values ahead of
+    # time prevents the library from oscillating between the two, eliminating
+    # authentication mismatches regardless of the version under test.
     requested_credentials = {
-        "POSTGRES_USER": "integration_user",
-        "POSTGRES_PASSWORD": "integration_password",
-        "POSTGRES_DB": "integration_db",
+        "POSTGRES_USER": "postgres",
+        "POSTGRES_PASSWORD": "postgres",
+        "POSTGRES_DB": "postgres",
     }
 
     postgres = PostgresContainer("postgres:15-alpine")
@@ -51,7 +52,10 @@ async def test_transaction_repository_crud_flow() -> None:
         )
 
         async_url = sync_url.set(drivername="postgresql+asyncpg")
-        async_url = async_url.set(username=credentials["POSTGRES_USER"], password=credentials["POSTGRES_PASSWORD"])
+        async_url = async_url.set(
+            username=credentials["POSTGRES_USER"], password=credentials["POSTGRES_PASSWORD"]
+        )
+        print("Using async database URL:", async_url.set(password="***"))
         os.environ["TRANSACTION_DATABASE_URL"] = str(async_url)
         os.environ["TRANSACTION_DATABASE_SSLMODE"] = "disable"
 
