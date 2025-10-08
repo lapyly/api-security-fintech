@@ -39,7 +39,9 @@ jobs:
       - name: Run pytest with coverage
         id: tests
         continue-on-error: true
-        run: pytest
+        run: |
+          export PYTHONPATH="$PYTHONPATH:$(pwd)"
+          pytest
 
       - name: Start services
         id: start_services
