@@ -31,6 +31,16 @@ async def test_transaction_repository_crud_flow() -> None:
 
     with PostgresContainer("postgres:15-alpine") as postgres:
         sync_url = make_url(postgres.get_connection_url())
+        # Ensure the URL matches the credentials that we configured via
+        # environment variables.  ``PostgresContainer`` exposes the default
+        # ``test`` credentials even when custom ones are provided through the
+        # environment, so we normalize the URL here to keep it in sync with the
+        # running container configuration.
+        sync_url = sync_url.set(
+            username=credentials["POSTGRES_USER"],
+            password=credentials["POSTGRES_PASSWORD"],
+            database=credentials["POSTGRES_DB"],
+        )
         async_url = sync_url.set(drivername="postgresql+asyncpg")
         os.environ["TRANSACTION_DATABASE_URL"] = str(async_url)
         os.environ["TRANSACTION_DATABASE_SSLMODE"] = "disable"
