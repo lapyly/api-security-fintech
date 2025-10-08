@@ -17,26 +17,26 @@ from services.transaction_service.infrastructure import repositories
 async def test_transaction_repository_crud_flow() -> None:
     # Use the same credentials as docker-compose to avoid password mismatches when the
     # repository reads TRANSACTION_DATABASE_URL.  Testcontainers defaults to the
-    # ``test`` user/password, so we explicitly align them with postgres/postgres.
-    with PostgresContainer(
-        "postgres:15-alpine",
-        user="postgres",
-        password="postgres",
-        dbname="postgres",
-    ) as postgres:
+    # ``test`` user/password in v3+, so we explicitly override them via ``env`` to keep
+    # compatibility with asyncpg + SQLAlchemy 2.x on Python 3.11.
+    credentials = {
+        "POSTGRES_USER": "postgres",
+        "POSTGRES_PASSWORD": "postgres",
+        "POSTGRES_DB": "postgres",
+    }
+    with PostgresContainer("postgres:15-alpine", env=credentials) as postgres:
         sync_url = make_url(postgres.get_connection_url())
         async_url = sync_url.set(drivername="postgresql+asyncpg")
         os.environ["TRANSACTION_DATABASE_URL"] = str(async_url)
         os.environ["TRANSACTION_DATABASE_SSLMODE"] = "disable"
 
         # Surface the normalized credentials for any code path that reads the
-        # standard Postgres environment variables during the test run.  The
-        # ``testcontainers`` 3.x+ releases removed the ``user``/``username``
-        # attributes in favor of storing credentials in ``PostgresContainer``'s
-        # ``env`` mapping, so we now look them up there for compatibility with
-        # modern versions while keeping the remainder of the async setup intact.
-        os.environ["POSTGRES_USER"] = postgres.env["POSTGRES_USER"]
-        os.environ["POSTGRES_PASSWORD"] = postgres.env["POSTGRES_PASSWORD"]
+        # standard Postgres environment variables during the test run.  We reuse
+        # the local ``credentials`` mapping to align with testcontainers-postgres
+        # 3.x's ``env`` handling while keeping the async configuration intact.
+        os.environ["POSTGRES_USER"] = credentials["POSTGRES_USER"]
+        os.environ["POSTGRES_PASSWORD"] = credentials["POSTGRES_PASSWORD"]
+        os.environ["POSTGRES_DB"] = credentials["POSTGRES_DB"]
 
         repo_module = importlib.reload(repositories)
 
