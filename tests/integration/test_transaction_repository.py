@@ -15,32 +15,13 @@ from services.transaction_service.infrastructure import repositories
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_transaction_repository_crud_flow() -> None:
-    # Use the same credentials as docker-compose to avoid password mismatches when the
-    # repository reads TRANSACTION_DATABASE_URL.  Testcontainers defaults to the
-    # ``test`` user/password in v3+, so we explicitly override them via environment
-    # variables to keep compatibility with asyncpg + SQLAlchemy 2.x on Python 3.11.
-    credentials = {
-        "POSTGRES_USER": "postgres",
-        "POSTGRES_PASSWORD": "postgres",
-        "POSTGRES_DB": "postgres",
-    }
-    # ``PostgresContainer`` in testcontainers-postgres v3+ ignores ``with_env``
-    # overrides for the default credentials, so we set them via os.environ
-    # before instantiating the container to ensure asyncpg can authenticate.
-    os.environ.update(credentials)
-
     with PostgresContainer("postgres:15-alpine") as postgres:
         sync_url = make_url(postgres.get_connection_url())
-        # Ensure the URL matches the credentials that we configured via
-        # environment variables.  ``PostgresContainer`` exposes the default
-        # ``test`` credentials even when custom ones are provided through the
-        # environment, so we normalize the URL here to keep it in sync with the
-        # running container configuration.
-        sync_url = sync_url.set(
-            username=credentials["POSTGRES_USER"],
-            password=credentials["POSTGRES_PASSWORD"],
-            database=credentials["POSTGRES_DB"],
-        )
+        credentials = {
+            "POSTGRES_USER": sync_url.username or "",
+            "POSTGRES_PASSWORD": sync_url.password or "",
+            "POSTGRES_DB": sync_url.database or "",
+        }
         async_url = sync_url.set(drivername="postgresql+asyncpg")
         os.environ["TRANSACTION_DATABASE_URL"] = str(async_url)
         os.environ["TRANSACTION_DATABASE_SSLMODE"] = "disable"
