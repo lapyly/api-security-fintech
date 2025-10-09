@@ -12,14 +12,10 @@ from sqlmodel import SQLModel
 from ..domain.models import Transaction
 
 
-DEFAULT_DATABASE_URL = "postgresql+asyncpg://postgres:postgres@db:5432/transactions"
-DATABASE_URL = os.getenv("TRANSACTION_DATABASE_URL", DEFAULT_DATABASE_URL)
-
-
-def _database_url_from_env() -> str:
-    """Return the configured database URL, falling back to the default."""
-
-    return os.getenv("TRANSACTION_DATABASE_URL", DEFAULT_DATABASE_URL)
+DATABASE_URL = os.getenv(
+    "TRANSACTION_DATABASE_URL",
+    "postgresql+asyncpg://postgres:postgres@db:5432/transactions",
+)
 
 
 def _normalize_database_url(url: str) -> str:
@@ -39,7 +35,7 @@ def _connect_args() -> dict[str, object]:
     raise RuntimeError(f"Unsupported TRANSACTION_DATABASE_SSLMODE value: {ssl_mode}")
 
 
-def _create_engine(url: str) -> AsyncEngine:
+def _create_engine(url: str = DATABASE_URL) -> AsyncEngine:
     return create_async_engine(
         _normalize_database_url(url),
         echo=False,
@@ -47,35 +43,8 @@ def _create_engine(url: str) -> AsyncEngine:
     )
 
 
-def _build_session_factory(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
-    return async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-
-
-def configure_engine(url: str | None = None) -> None:
-    """(Re)initialize the async engine and session factory.
-
-    Tests override database credentials at runtime, so the repository needs to
-    rebuild its engine after environment variables change.  Reconfiguring the
-    engine ensures that integration tests can connect to the ephemeral Postgres
-    container started by testcontainers instead of the docker-compose database
-    used in local development.
-    """
-
-    database_url = url or _database_url_from_env()
-    new_engine = _create_engine(database_url)
-    new_session_factory = _build_session_factory(new_engine)
-
-    old_engine = globals().get("engine")
-    globals()["engine"] = new_engine
-    globals()["async_session_factory"] = new_session_factory
-
-    if isinstance(old_engine, AsyncEngine):
-        # Disposing the underlying sync engine releases any pooled connections
-        # without requiring an async context.
-        old_engine.sync_engine.dispose()
-
-
-configure_engine()
+engine = _create_engine()
+async_session_factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
 
 @asynccontextmanager
@@ -126,6 +95,5 @@ __all__ = [
     "async_session_factory",
     "get_session",
     "init_models",
-    "configure_engine",
 ]
 
