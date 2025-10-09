@@ -71,6 +71,6 @@ def test_sanitize_transaction_masks_pan_values() -> None:
     transaction_read = TransactionRead.model_validate(transaction)
 
     sanitized = sanitize_transaction(transaction_read)
-
+git 
     assert sanitized.description.endswith("1111 used")
     assert "411111" not in sanitized.description

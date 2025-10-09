@@ -2,9 +2,8 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY services/transaction_service /app
-
-# Include shared utilities used by services (e.g., services.common)
+# Copiar el servicio y el código común
+COPY services/transaction_service /app/services/transaction_service
 COPY services/common /app/services/common
 
 RUN pip install --no-cache-dir \
@@ -19,4 +18,6 @@ RUN pip install --no-cache-dir \
     python-json-logger \
     prometheus-fastapi-instrumentator
 
-CMD ["uvicorn","presentation.main:app","--host","0.0.0.0","--port","8002","--ssl-keyfile","/certs/transaction_service.key","--ssl-certfile","/certs/transaction_service.crt","--ssl-ca-certs","/certs/ca.crt","--ssl-cert-reqs","2"]
+ENV PYTHONPATH=/app
+
+CMD ["uvicorn", "services.transaction_service.presentation.main:app", "--host", "0.0.0.0", "--port", "8002", "--ssl-keyfile", "/certs/transaction_service.key", "--ssl-certfile", "/certs/transaction_service.crt", "--ssl-ca-certs", "/certs/ca.crt", "--ssl-cert-reqs", "2"]
