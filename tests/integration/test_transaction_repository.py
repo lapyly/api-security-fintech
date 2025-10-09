@@ -27,13 +27,16 @@ async def test_transaction_repository_crud_flow() -> None:
         "POSTGRES_DB": "postgres",
     }
 
-    postgres = PostgresContainer("postgres:15-alpine")
-    for key, value in requested_credentials.items():
-        # ``with_env`` works across testcontainers v2/v3 and ensures that the
-        # container starts with the exact credentials our test expects instead of
-        # relying on library defaults that may oscillate between ``test`` and
-        # ``postgres`` across releases.
-        postgres.with_env(key, value)
+    # Passing the credentials directly to ``PostgresContainer`` guarantees that
+    # every supported library version boots with the same user/password/dbname
+    # combination.  Some releases ignore ``with_env`` overrides and default to
+    # ``test``/``test`` which leads to authentication failures in CI.
+    postgres = PostgresContainer(
+        "postgres:15-alpine",
+        user=requested_credentials["POSTGRES_USER"],
+        password=requested_credentials["POSTGRES_PASSWORD"],
+        dbname=requested_credentials["POSTGRES_DB"],
+    )
 
     with postgres as container:
         sync_url = make_url(container.get_connection_url())
