@@ -6,8 +6,8 @@ from typing import Any
 import pytest
 
 
-# pytest-asyncio>=0.23 provides a session-scoped loop by default, so we can
-# rely on its built-in fixture instead of redefining ``event_loop``.
+# The repository-level pytest shim supplies an ``event_loop`` fixture so the
+# tests can run without depending on the external pytest-asyncio plugin.
 
 
 @pytest.fixture

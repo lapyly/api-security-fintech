@@ -22,9 +22,9 @@ async def test_transaction_repository_crud_flow() -> None:
     # time prevents the library from oscillating between the two, eliminating
     # authentication mismatches regardless of the version under test.
     requested_credentials = {
-        "POSTGRES_USER": "postgres" | "test",
-        "POSTGRES_PASSWORD": "postgres" | "test",
-        "POSTGRES_DB": "postgres" | "test",
+        "POSTGRES_USER": "postgres",
+        "POSTGRES_PASSWORD": "postgres",
+        "POSTGRES_DB": "postgres",
     }
 
     # Passing the credentials directly to ``PostgresContainer`` guarantees that
