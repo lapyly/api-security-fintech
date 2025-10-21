@@ -191,11 +191,13 @@ services:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
       GF_SECURITY_ALLOW_EMBEDDING: "true"
+      GF_PATHS_PROVISIONING: /etc/grafana/provisioning
     ports:
       - "3000:3000"
     volumes:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana 
     networks:
       - fintech-net
 
@@ -209,4 +211,6 @@ volumes:
   promtail_positions:
     driver: local
   loki-data:
+    driver: local
+  grafana-data:
     driver: local
