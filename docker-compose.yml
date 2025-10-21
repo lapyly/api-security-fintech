@@ -156,13 +156,16 @@ services:
     image: grafana/loki:2.9.3
     container_name: loki
     restart: unless-stopped
+    user: "0" #For PoC only, adjust as needed
     command: ["-config.file=/etc/loki/local-config.yml"]
     volumes:
       - ./logging/loki-config.yml:/etc/loki/local-config.yml:ro
+      - loki-data:/var/loki
     ports:
       - "3100:3100"
     networks:
       - fintech-net
+   
 
   promtail:
     image: grafana/promtail:2.9.3
@@ -204,4 +207,6 @@ volumes:
   postgres_data:
     driver: local
   promtail_positions:
+    driver: local
+  loki-data:
     driver: local
